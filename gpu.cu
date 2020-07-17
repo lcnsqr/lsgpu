@@ -103,6 +103,7 @@ int gpu_description(char* buffer){
   Name:            %s\n\
   Family:          %s\n\
   Capability:      %d.%d\n\
+  Multiprocessors: %d\n\
   Cores / MP:      %d\n\
   Global Memory:   %.0f MB\n\
   Driver:          %d.%d\n\
@@ -111,6 +112,7 @@ int gpu_description(char* buffer){
     deviceProp[c].name,
     family,
     deviceProp[c].major, deviceProp[c].minor,
+    deviceProp[c].multiProcessorCount,
     _ConvertSMVer2Cores(deviceProp[c].major, deviceProp[c].minor),
     (float)deviceProp[c].totalGlobalMem/1048576.0f,
     driverVersion/1000, (driverVersion%100)/10,
