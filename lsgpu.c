@@ -6,8 +6,6 @@
 #include <mpi.h>
 #include "gpu.h"
 
-// CPU
-
 // Process rank
 int rank;
 // Number of processing units
@@ -30,19 +28,63 @@ int main(int argc, char **argv){
   // The last process is the root
   root = size - 1;
 
+  if ( argc < 2 ){
+    if ( rank == root ){
+      fprintf(stderr, "Output filename not provided.\n");
+    }
+    MPI_Finalize();
+    exit(0);
+  }
+
+  char *filename = argv[1];
+
+  // Description entry
+  char buf_entry[4096];
+  // Buffer to store local descriptions of local devices
+  char *buf_local = (char*)malloc(sizeof(char)*(1+MAX_GPU)*4096);
+  memset(buf_local, 0, sizeof(char)*(1+MAX_GPU)*4096);
+
+  // Add node name and device count to the description
+  char hostname[MPI_MAX_PROCESSOR_NAME];
+  int len;
+  MPI_Get_processor_name(hostname, &len);
+
+  // Device count
   int deviceCount = gpu_count();
 
-  char **buffer = (char**)malloc(sizeof(char*)*deviceCount);
-  for (int c = 0; c < deviceCount; c++){
-    buffer[c] = (char*)malloc(sizeof(char)*4096);
+  // Format node details
+  snprintf(buf_entry, 4096, "\
+Node:            %s\n\
+Devices:         %d\n", 
+  hostname, 
+  deviceCount);
+
+  // Add to description
+  strncat(buf_local, buf_entry, 4096);
+
+  // Read GPU details
+  gpu_description(buf_local);
+
+  // Global buffer
+  char *buf = NULL;
+  if ( rank == root ){
+    buf = (char*)malloc(size*sizeof(char)*(1+MAX_GPU)*4096);
   }
-  gpu_description(buffer);
+
+  // Gather descriptions from all processes
+  MPI_Gather(buf_local, (1+MAX_GPU)*4096, MPI_CHAR, buf, (1+MAX_GPU)*4096, MPI_CHAR, root, MPI_COMM_WORLD);
 
   if ( rank == root ){
-    for (int c = 0; c < deviceCount; c++){
-      printf("%s\n", buffer[c]);
+    // Save descriptions
+    FILE *file = fopen(filename, "w");
+    for (int r = 0; r < size; r++){
+      fprintf(file, "%s\n", &buf[r * (1+MAX_GPU)*4096]);
     }
+    fclose(file);
+    free(buf);
   }
+
+  free(buf_local);
 
   MPI_Finalize();
 

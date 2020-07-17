@@ -60,7 +60,7 @@ int gpu_properties(cudaDeviceProp* deviceProp, int deviceCount){
 }
 
 // Descriptive GPU details
-int gpu_description(char** buffer){
+int gpu_description(char* buffer){
 
   int deviceCount = gpu_count();
   if ( deviceCount < 0 ) return -1;
@@ -74,10 +74,15 @@ int gpu_description(char** buffer){
   cudaDriverGetVersion(&driverVersion);
   cudaRuntimeGetVersion(&runtimeVersion);
 
+  // GPU chipset family
   char family[32];
 
-  for (int c = 0; c < deviceCount; c++){
+  // Description entry
+  char buf_entry[4096];
 
+  for (int c = 0; c < deviceCount && c < MAX_GPU; c++){
+
+    // Get GPU family
     switch ( deviceProp[c].major ){
       case 3: sprintf(family, "Kepler"); break;
       case 5: sprintf(family, "Maxwell"); break;
@@ -93,14 +98,16 @@ int gpu_description(char** buffer){
       case 8: sprintf(family, "Ampere"); break;
     }
 
-    snprintf(buffer[c], 4096, "Device:\t\t%s \
-Family:\t\t%s \
-Capability:\t\t%d.%d \
-Cores / MP:\t\t%d \
-Global Memory:\t\t%.0f MB \
-Driver:\t\t%d.%d \
-Runtime:\t\t%d.%d \
-\n", 
+    snprintf(buf_entry, 4096, "\
+  Device:          %d\n\
+  Name:            %s\n\
+  Family:          %s\n\
+  Capability:      %d.%d\n\
+  Cores / MP:      %d\n\
+  Global Memory:   %.0f MB\n\
+  Driver:          %d.%d\n\
+  Runtime:         %d.%d\n", 
+    c,
     deviceProp[c].name,
     family,
     deviceProp[c].major, deviceProp[c].minor,
@@ -109,6 +116,11 @@ Runtime:\t\t%d.%d \
     driverVersion/1000, (driverVersion%100)/10,
     runtimeVersion/1000, (runtimeVersion%100)/10);
 
+    // Add to description
+    strncat(buffer, buf_entry, 4096);
   }
-  return 0;
+
+  free(deviceProp);
+
+  return deviceCount;
 }
