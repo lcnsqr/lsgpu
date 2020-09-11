@@ -13,7 +13,7 @@ all: lsgpu
 # MPI + OpenMP + GPU
 
 gpu.o: gpu.cu
-	nvcc -o $@ -c $^
+	$(CUDADIR)/bin/nvcc -o $@ -c $^
 
 lsgpu.o: lsgpu.c
 	mpic++ -o $@ -c -fopenmp $^
